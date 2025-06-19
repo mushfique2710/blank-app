@@ -18,7 +18,7 @@ for day in days:
             schedule[day] = {"Start": "N/A", "End": "N/A"}
             hex_schedule[day] = "0" * 24  # 24 hex digits = 6 hours of 15-min slots
         else:
-            start = st.time_input(f"Start time for {day}", value=time(9, 0), key=f"{day}_start")
+            start = st.time_input(f"Start time for {day}", value=time(7, 0), key=f"{day}_start")
             end = st.time_input(f"End time for {day}", value=time(17, 0), key=f"{day}_end")
 
             if start >= end:
