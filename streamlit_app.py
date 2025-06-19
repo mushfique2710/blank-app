@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import time, datetime, timedelta
 
-st.title("Weekly Schedule Creator (Mon - Sun)")
+st.title("Weekly Valve Schedule Creator (Mon - Sun)")
 
 schedule = {}
 hex_schedule = {}
