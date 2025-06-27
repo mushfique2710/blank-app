@@ -1,63 +1,61 @@
 import streamlit as st
-from datetime import time, datetime, timedelta
+import json
+from datetime import time
 
-st.title("Weekly Valve Schedule Creator (Mon - Sun)")
+st.title("Schedule & Weekend JSON Creator")
 
-schedule = {}
-hex_schedule = {}
+ALL_DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
 
-st.subheader("Set Start and End Times for Each Day")
+# Initialize session state
+if "working_block" not in st.session_state:
+    st.session_state.working_block = None
+if "selected_days" not in st.session_state:
+    st.session_state.selected_days = []
 
-# Days of the week (Monday to Sunday)
-days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+# Sidebar form
+st.sidebar.header("Define Working Hours")
 
-for day in days:
-    with st.expander(f"{day}"):
-        na = st.checkbox(f"Mark {day} as N/A (Not Applicable)", key=f"{day}_na")
-        if na:
-            schedule[day] = {"Start": "N/A", "End": "N/A"}
-            hex_schedule[day] = "0" * 24  # 24 hex digits = 6 hours of 15-min slots
-        else:
-            start = st.time_input(f"Start time for {day}", value=time(7, 0), key=f"{day}_start")
-            end = st.time_input(f"End time for {day}", value=time(17, 0), key=f"{day}_end")
+with st.sidebar.form("working_hours_form"):
+    selected_days = st.multiselect("Working Days", options=ALL_DAYS[:5], default=["MON", "TUE", "WED", "THU", "FRI"])
+    start_time = st.time_input("Start Time", value=time(9, 0))
+    end_time = st.time_input("End Time", value=time(17, 0))
+    submit = st.form_submit_button("Set Working Hours")
 
-            if start >= end:
-                st.warning(f"⚠️ End time should be after start time for {day}.")
-                hex_schedule[day] = "0" * 24
-                schedule[day] = {"Start": start.strftime("%H:%M"), "End": end.strftime("%H:%M")}
-            else:
-                schedule[day] = {"Start": start.strftime("%H:%M"), "End": end.strftime("%H:%M")}
+# Save working block
+if submit:
+    if selected_days:
+        st.session_state.working_block = {
+            "days": selected_days,
+            "time": [start_time.strftime("%H:%M:%S"), end_time.strftime("%H:%M:%S")],
+            "name": "Working Hours"
+        }
+        st.session_state.selected_days = selected_days
+    else:
+        st.warning("Please select at least one working day.")
 
-                # Generate 96-slot binary schedule (15-minute intervals)
-                binary_slots = []
-                current = datetime.combine(datetime.today(), time(0, 0))
-                end_of_day = current + timedelta(hours=24)
+# Construct Weekend block
+used_days = set(st.session_state.selected_days)
+weekend_days = [day for day in ALL_DAYS if day not in used_days]
 
-                while current < end_of_day:
-                    slot_time = current.time()
-                    if start <= slot_time < end:
-                        binary_slots.append(1)
-                    else:
-                        binary_slots.append(0)
-                    current += timedelta(minutes=15)
+weekend_block = {
+    "days": weekend_days,
+    "time": ["00:00:00", "23:59:59"],
+    "name": "Weekend"
+} if weekend_days else None
 
-                # Convert every 4 binary slots to a hex digit
-                hex_digits = []
-                for i in range(0, len(binary_slots), 4):
-                    chunk = binary_slots[i:i+4]
-                    binary_str = ''.join(map(str, chunk))
-                    hex_digit = hex(int(binary_str, 2))[2:]
-                    hex_digits.append(hex_digit.upper())
+# Final Output
+st.header("Generated Schedule JSON")
 
-                hex_schedule[day] = ''.join(hex_digits)
+schedule = []
+if st.session_state.working_block:
+    schedule.append(st.session_state.working_block)
+if weekend_block:
+    schedule.append(weekend_block)
 
-# Display the schedule table
 if schedule:
-    st.subheader("📅 Your Weekly Schedule")
-    st.table(schedule)
+    st.json(schedule)
 
-# Display single combined hex string
-if hex_schedule:
-    st.subheader("🧮 Combined Weekly Hexadecimal Schedule (168 characters)")
-    combined_hex_string = ''.join(hex_schedule[day] for day in days)
-    st.code(combined_hex_string, language='text')
+# Reset button
+if st.button("Reset"):
+    st.session_state.working_block = None
+    st.session_state.selected_days = []
